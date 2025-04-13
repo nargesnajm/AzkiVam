@@ -394,7 +394,6 @@ export default {
         }
 
         if (merchantIds.length > 0) {
-          // TODO - Pouya: Filter products by merchantIds
           this.products = this.products.filter((p) =>
             merchantIds.includes(p.merchantId)
           );
