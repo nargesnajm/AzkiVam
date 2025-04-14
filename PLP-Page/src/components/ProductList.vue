@@ -119,11 +119,15 @@ export default {
       );
     },
   },
-
+  /*
+    TODO - Pouya: This is the watch that is used to update the route when the user changes the filters
+    This is used to ensure that the URL is updated with the new filters
+    This is also used to initialize the component with the correct filters from the URL when the component is mounted
+  */
   watch: {
     // Watch for route changes
     $route: {
-      immediate: true,
+      // immediate: true,
       handler(to) {
         this.handleRouteChange(to);
       },
@@ -134,9 +138,9 @@ export default {
       },
     },
   },
-  mounted() {
-    this.fetchCategories();
-    this.fetchAllProducts();
+  async mounted() {
+    await this.fetchCategories();
+    await this.fetchAllProducts();
     this.initializeFromURL();
     window.onscroll = this.handleScroll;
   },
@@ -145,18 +149,19 @@ export default {
   },
   methods: {
     handleRouteChange(to) {
-      console.log("to", to);
-
       // Extract parameters from route params instead of query
       const { categoryId, slug } = to.params;
 
       // Handle category ID from params
       if (categoryId) {
         this.selectedCategoryId = Number(categoryId);
+        this.selectedCategoryName = slug;
       } else {
         this.selectedCategoryId = null;
+        this.selectedCategoryName = null;
       }
 
+      // Update selected shops from query (keeping this part unchanged)
       const { merchantIds } = to.query;
       if (merchantIds) {
         this.selectedShops = merchantIds.split(",").map(Number);
@@ -197,11 +202,23 @@ export default {
     },
 
     selectCategory(id, slug) {
-      console.log("selectCategory", id, slug);
       this.selectedCategoryId = id;
 
       // Find the category name from the categories list
       let categoryName = null;
+      const category = this.categories.find((cat) => cat.id === id);
+      if (category) {
+        categoryName = category.name;
+      } else {
+        // If not found in parent categories, search in subcategories
+        for (const parentCat of this.categories) {
+          const subcat = parentCat.subcategories.find((sub) => sub.id === id);
+          if (subcat) {
+            categoryName = subcat.name;
+            break;
+          }
+        }
+      }
 
       this.selectedCategoryName = categoryName || slug;
       this.currentPage = 1;
@@ -249,6 +266,7 @@ export default {
         const res = await axios.get(
           "https://interview-api.azkivam.com/api/v1/categories"
         );
+        // console.log("API Response:", res);
 
         const allCategories = res.data.data;
         if (!allCategories || allCategories.length === 0) {
@@ -301,6 +319,9 @@ export default {
 
     toggleCategory(category) {
       category.expanded = !category.expanded; // Toggle the expanded state
+      if (category.expanded) {
+        this.selectCategory(category.id, category.slug);
+      }
     },
 
     // New method to fetch shops
@@ -394,6 +415,7 @@ export default {
         }
 
         if (merchantIds.length > 0) {
+          // TODO - Pouya: Filter products by merchantIds
           this.products = this.products.filter((p) =>
             merchantIds.includes(p.merchantId)
           );
